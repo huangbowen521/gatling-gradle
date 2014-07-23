@@ -1,0 +1,57 @@
+apply plugin: 'scala'
+apply plugin: 'idea'
+
+
+repositories {
+    mavenCentral ()
+    maven {
+        url 'http://repository.excilys.com/content/groups/public'
+    }
+}
+
+
+dependencies {
+    compile 'org.scala-lang:scala-library:2.10.1'
+    testCompile 'io.gatling.highcharts:gatling-charts-highcharts:2.0.0-M3a'
+}
+
+sourceSets {
+    test {
+        resources {
+            srcDir 'conf'
+        }
+    }
+}
+
+task gatling (dependsOn: 'compileTestScala') << {
+
+    logger.lifecycle (" ---- Executing all Gatling scenarios from: ${sourceSets.test.output.classesDir} ----")
+
+    sourceSets.test.output.classesDir.eachFileRecurse { file ->
+        if (file.isFile ()) {
+
+            def gatlingScenarioClass = (file.getPath () - (sourceSets.test.output.classesDir.getPath () + File.separator) - '.class')
+                    .replace (File.separator, '.')
+
+            javaexec {
+                main = 'io.gatling.app.Gatling'
+                classpath = sourceSets.test.output + sourceSets.test.runtimeClasspath
+                args '-sbf',
+                        sourceSets.test.output.classesDir,
+                        '-s',
+                        gatlingScenarioClass,
+                        '-rf',
+                        'build/reports/gatling'
+            }
+        }
+
+    }
+
+    logger.lifecycle (" ---- Done executing all Gatling scenarios ----")
+}
+
+
+task wrapper (type: Wrapper) {
+    gradleVersion = '2.0'
+}
+
