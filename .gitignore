@@ -4,3 +4,11 @@ build
 *.iws
 .DS_Store
 .gradle
+/bin/
+.DS_Store
+.settings/
+.idea/
+.project
+.classpath
+.cache-tests
+results/
