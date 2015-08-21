@@ -1,5 +1,6 @@
 apply plugin: 'scala'
 apply plugin: 'idea'
+apply plugin: 'eclipse'
 
 
 repositories {
@@ -11,8 +12,8 @@ repositories {
 
 
 dependencies {
-    compile 'org.scala-lang:scala-library:2.10.1'
-    testCompile 'io.gatling.highcharts:gatling-charts-highcharts:2.0.0-M3a'
+    compile 'org.scala-lang:scala-library:2.11.7'
+    testCompile 'io.gatling.highcharts:gatling-charts-highcharts:2.1.+'
 }
 
 sourceSets {
@@ -23,7 +24,7 @@ sourceSets {
     }
 }
 
-task gatling (dependsOn: 'compileTestScala') << {
+task gatling (dependsOn: 'compileTestScala') {
 
     logger.lifecycle (" ---- Executing all Gatling scenarios from: ${sourceSets.test.output.classesDir} ----")
 
@@ -33,16 +34,22 @@ task gatling (dependsOn: 'compileTestScala') << {
             def gatlingScenarioClass = (file.getPath () - (sourceSets.test.output.classesDir.getPath () + File.separator) - '.class')
                     .replace (File.separator, '.')
 
+            def absPath = System.getProperty("user.dir");
+
+            // target/test-classes is required by gatling to be run
+            def targetTestClassesFolder = new File (absPath, 'target/test-classes')
+            targetTestClassesFolder.mkdirs()
+
+            def targetReportsFolder = new File (project.buildDir.absolutePath, '/reports')
+            targetReportsFolder.mkdirs()
+
             javaexec {
                 main = 'io.gatling.app.Gatling'
                 classpath = sourceSets.test.output + sourceSets.test.runtimeClasspath
-                args '-sbf',
-                        sourceSets.test.output.classesDir,
-                        '-s',
-                        gatlingScenarioClass,
-                        '-rf',
-                        'build/reports/gatling'
+                args '-sf', sourceSets.test.output.classesDir,
+                        '-s', gatlingScenarioClass
             }
+
         }
 
     }
@@ -52,6 +59,6 @@ task gatling (dependsOn: 'compileTestScala') << {
 
 
 task wrapper (type: Wrapper) {
-    gradleVersion = '2.0'
+    gradleVersion = '2.2'
 }
 
