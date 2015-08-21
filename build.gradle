@@ -26,42 +26,61 @@ sourceSets {
 
 task gatling(dependsOn: 'compileTestScala') << {
 
-    logger.lifecycle(" ---- Executing all Gatling scenarios from: ${sourceSets.test.output.classesDir} ----")
+    def absPath = System.getProperty("user.dir");
 
-    sourceSets.test.output.classesDir.eachFileRecurse { file ->
-        if (file.isFile()) {
+    // target/test-classes is required by gatling to be run
+    def targetTestClassesFolder = new File(absPath, 'target/test-classes')
+    targetTestClassesFolder.mkdirs()
 
-            def gatlingScenarioClass = (file.getPath() - (sourceSets.test.output.classesDir.getPath() + File.separator) - '.class')
-                    .replace(File.separator, '.')
+    // create build/reports folder
+    def targetReportsFolder = new File(project.buildDir.absolutePath, '/reports')
+    targetReportsFolder.mkdirs()
 
-            def absPath = System.getProperty("user.dir");
+    // if only one
+    if (project.hasProperty("sim")) {
 
-            // target/test-classes is required by gatling to be run
-            def targetTestClassesFolder = new File(absPath, 'target/test-classes')
-            targetTestClassesFolder.mkdirs()
+        def gatlingScenarioClass = sim
 
-            def targetReportsFolder = new File(project.buildDir.absolutePath, '/reports')
-            targetReportsFolder.mkdirs()
+        logger.lifecycle(" ---- Executing single Gatling scenario: ${gatlingScenarioClass} ----")
 
-            javaexec {
-                if (project.hasProperty('jvmArgs')) {
-                    jvmArgs project.jvmArgs.split('\\s+')
-                }
+        runGatlingSimulation(gatlingScenarioClass)
 
-                main = 'io.gatling.app.Gatling'
-                classpath = sourceSets.test.output + sourceSets.test.runtimeClasspath
-                args '-sf', sourceSets.test.output.classesDir,
-                        '-s', gatlingScenarioClass,
-                        '-rf', project.buildDir.absolutePath + '/reports/'
+    } else {
+
+        logger.lifecycle(" ---- Executing all Gatling scenarios from: ${sourceSets.test.output.classesDir} ----")
+
+        sourceSets.test.output.classesDir.eachFileRecurse { file ->
+            if (file.isFile()) {
+
+                def gatlingScenarioClass = (file.getPath() - (sourceSets.test.output.classesDir.getPath() + File.separator) - '.class')
+                        .replace(File.separator, '.')
+
+                runGatlingSimulation(gatlingScenarioClass)
+                return
             }
-
         }
-
     }
 
     logger.lifecycle(" ---- Done executing all Gatling scenarios ----")
 }
 
+def runGatlingSimulation(gatlingScenarioClass) {
+
+    def absPath = System.getProperty("user.dir");
+
+    javaexec {
+        if (project.hasProperty('jvmArgs')) {
+            jvmArgs project.jvmArgs.split('\\s+')
+        }
+
+        main = 'io.gatling.app.Gatling'
+        classpath = sourceSets.test.output + sourceSets.test.runtimeClasspath
+        args '-sf', sourceSets.test.output.classesDir,
+                '-s', gatlingScenarioClass,
+                '-rf', project.buildDir.absolutePath + '/reports/',
+                '-df', absPath + '/data/'
+    }
+}
 
 task wrapper(type: Wrapper) {
     gradleVersion = '2.2'
