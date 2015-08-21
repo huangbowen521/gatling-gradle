@@ -4,7 +4,7 @@ apply plugin: 'eclipse'
 
 
 repositories {
-    mavenCentral ()
+    mavenCentral()
     maven {
         url 'http://repository.excilys.com/content/groups/public'
     }
@@ -24,41 +24,46 @@ sourceSets {
     }
 }
 
-task gatling (dependsOn: 'compileTestScala') << {
+task gatling(dependsOn: 'compileTestScala') << {
 
-    logger.lifecycle (" ---- Executing all Gatling scenarios from: ${sourceSets.test.output.classesDir} ----")
+    logger.lifecycle(" ---- Executing all Gatling scenarios from: ${sourceSets.test.output.classesDir} ----")
 
     sourceSets.test.output.classesDir.eachFileRecurse { file ->
-        if (file.isFile ()) {
+        if (file.isFile()) {
 
-            def gatlingScenarioClass = (file.getPath () - (sourceSets.test.output.classesDir.getPath () + File.separator) - '.class')
-                    .replace (File.separator, '.')
+            def gatlingScenarioClass = (file.getPath() - (sourceSets.test.output.classesDir.getPath() + File.separator) - '.class')
+                    .replace(File.separator, '.')
 
             def absPath = System.getProperty("user.dir");
 
             // target/test-classes is required by gatling to be run
-            def targetTestClassesFolder = new File (absPath, 'target/test-classes')
+            def targetTestClassesFolder = new File(absPath, 'target/test-classes')
             targetTestClassesFolder.mkdirs()
 
-            def targetReportsFolder = new File (project.buildDir.absolutePath, '/reports')
+            def targetReportsFolder = new File(project.buildDir.absolutePath, '/reports')
             targetReportsFolder.mkdirs()
 
             javaexec {
+                if (project.hasProperty('jvmArgs')) {
+                    jvmArgs project.jvmArgs.split('\\s+')
+                }
+
                 main = 'io.gatling.app.Gatling'
                 classpath = sourceSets.test.output + sourceSets.test.runtimeClasspath
                 args '-sf', sourceSets.test.output.classesDir,
-                        '-s', gatlingScenarioClass
+                        '-s', gatlingScenarioClass,
+                        '-rf', project.buildDir.absolutePath + '/reports/'
             }
 
         }
 
     }
 
-    logger.lifecycle (" ---- Done executing all Gatling scenarios ----")
+    logger.lifecycle(" ---- Done executing all Gatling scenarios ----")
 }
 
 
-task wrapper (type: Wrapper) {
+task wrapper(type: Wrapper) {
     gradleVersion = '2.2'
 }
 
