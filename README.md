@@ -37,6 +37,11 @@ Example:
 `gradle clean gatling -Psim="simulations.basic.BasicWithDataFeedSimulation"`
 
 
+#### Listing all Simulations
+
+`gradle listSims`
+
+
 ## Report location
 
 All reports are saved in build/reports/*

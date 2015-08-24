@@ -56,13 +56,29 @@ task gatling(dependsOn: 'compileTestScala') << {
                         .replace(File.separator, '.')
 
                 runGatlingSimulation(gatlingScenarioClass)
-                return
             }
         }
     }
 
     logger.lifecycle(" ---- Done executing all Gatling scenarios ----")
 }
+
+
+task listSims() << {
+    logger.lifecycle("Listing all Gatling scenarios from: ${sourceSets.test.output.classesDir}:")
+
+    logger.lifecycle("")
+    sourceSets.test.output.classesDir.eachFileRecurse { file ->
+        if (file.isFile()) {
+
+            def gatlingScenarioClass = (file.getPath() - (sourceSets.test.output.classesDir.getPath() + File.separator) - '.class')
+                    .replace(File.separator, '.')
+
+            logger.lifecycle("\t${gatlingScenarioClass}")
+        }
+    }
+}
+
 
 def runGatlingSimulation(gatlingScenarioClass) {
 
