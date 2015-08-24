@@ -41,13 +41,13 @@ task gatling(dependsOn: 'compileTestScala') << {
 
         def gatlingScenarioClass = sim
 
-        logger.lifecycle(" ---- Executing single Gatling scenario: ${gatlingScenarioClass} ----")
+        logger.lifecycle(" ---- Executing single Gatling Simulations: ${gatlingScenarioClass} ----")
 
         runGatlingSimulation(gatlingScenarioClass)
 
     } else {
 
-        logger.lifecycle(" ---- Executing all Gatling scenarios from: ${sourceSets.test.output.classesDir} ----")
+        logger.lifecycle(" ---- Executing all Gatling Simulations from: ${sourceSets.test.output.classesDir} ----")
 
         sourceSets.test.output.classesDir.eachFileRecurse { file ->
             if (file.isFile()) {
@@ -63,9 +63,9 @@ task gatling(dependsOn: 'compileTestScala') << {
     logger.lifecycle(" ---- Done executing all Gatling scenarios ----")
 }
 
-
-task listSims() << {
-    logger.lifecycle("Listing all Gatling scenarios from: ${sourceSets.test.output.classesDir}:")
+// List all gatling simulations
+task listSims(dependsOn: 'compileTestScala') << {
+    logger.lifecycle("\nListing all Gatling Simulations from: ${sourceSets.test.output.classesDir}:")
 
     logger.lifecycle("")
     sourceSets.test.output.classesDir.eachFileRecurse { file ->
@@ -74,7 +74,11 @@ task listSims() << {
             def gatlingScenarioClass = (file.getPath() - (sourceSets.test.output.classesDir.getPath() + File.separator) - '.class')
                     .replace(File.separator, '.')
 
-            logger.lifecycle("\t${gatlingScenarioClass}")
+            def foundGatlingSim = gatlingScenarioClass.lastIndexOf("Simulation");
+
+            if (foundGatlingSim > 0) {
+                logger.lifecycle("\t${gatlingScenarioClass}")
+            }
         }
     }
 }
