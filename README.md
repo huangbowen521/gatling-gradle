@@ -42,10 +42,62 @@ Example:
 `gradle listSims`
 
 
+#### Running All Simulations except one or more Simulations
+
+`gradle gatling -PignoreSims={sim}`
+
+or 
+
+`gradle gatling -PignoreSims={sim},{sim}`
+
+
+#### Running All Simulations and generating a single report
+
+Just get simulation.log files written:
+
+`gradle gatling -PnoReport`
+
+
+Collect all the simulation logs and write a single report for all:
+
+`gradle mergeReport`
+
+
+The `ignoreSims` works with this command as well:
+
+`gradle gatling -PignoreSims={sim},{sim} -PnoReport`
+
+
+Using them all together:
+
+`gradle gatling -PignoreSims={sim},{sim} -PnoReport mergeReport`
+
+
+Note: This is function is especially helpful if using Jenkins to fire off Simulations w/ multiple slaves
+
+
 ## Report location
 
-All reports are saved in build/reports/*
+All reports are saved in `build/reports/`
 
+If using the `mergeReport` feature the files will by default be in `build/reports/mergedSimulationLogs/`
+
+
+## Configuration Options
+
+### Gradle Tasks
+
+ - `gatling`
+ - `listSims`
+ - `mergeReport`
+
+### Modifications
+
+To use add `-P` before the modification.
+
+- `ignoreSims`
+- `noReport`
+- `sim`
 
 ## Setup in IDEs
 
