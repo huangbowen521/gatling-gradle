@@ -1,9 +1,10 @@
 apply plugin: 'scala'
 apply plugin: 'idea'
+apply plugin: 'eclipse'
 
 
 repositories {
-    mavenCentral ()
+    mavenCentral()
     maven {
         url 'http://repository.excilys.com/content/groups/public'
     }
@@ -11,8 +12,8 @@ repositories {
 
 
 dependencies {
-    compile 'org.scala-lang:scala-library:2.10.1'
-    testCompile 'io.gatling.highcharts:gatling-charts-highcharts:2.0.0-M3a'
+    compile 'org.scala-lang:scala-library:2.11.7'
+    testCompile 'io.gatling.highcharts:gatling-charts-highcharts:2.1.+'
 }
 
 sourceSets {
@@ -23,35 +24,160 @@ sourceSets {
     }
 }
 
-task gatling (dependsOn: 'compileTestScala') << {
+/**
+ * Run Gatling Tests
+ */
+task gatling(dependsOn: 'compileTestScala') << {
 
-    logger.lifecycle (" ---- Executing all Gatling scenarios from: ${sourceSets.test.output.classesDir} ----")
+    def absPath = System.getProperty("user.dir");
 
-    sourceSets.test.output.classesDir.eachFileRecurse { file ->
-        if (file.isFile ()) {
+    // target/test-classes is required by gatling to be run
+    def targetTestClassesFolder = new File(absPath, 'target/test-classes')
+    targetTestClassesFolder.mkdirs()
 
-            def gatlingScenarioClass = (file.getPath () - (sourceSets.test.output.classesDir.getPath () + File.separator) - '.class')
-                    .replace (File.separator, '.')
+    // create build/reports folder
+    def targetReportsFolder = new File(project.buildDir.absolutePath, '/reports')
+    targetReportsFolder.mkdirs()
 
-            javaexec {
-                main = 'io.gatling.app.Gatling'
-                classpath = sourceSets.test.output + sourceSets.test.runtimeClasspath
-                args '-sbf',
-                        sourceSets.test.output.classesDir,
-                        '-s',
-                        gatlingScenarioClass,
-                        '-rf',
-                        'build/reports/gatling'
-            }
-        }
+    def runReports = true
 
+    if (project.hasProperty("noReport")) {
+        runReports = false
     }
 
-    logger.lifecycle (" ---- Done executing all Gatling scenarios ----")
+    // if only one
+    if (project.hasProperty("sim")) {
+
+        def gatlingScenarioClass = sim
+
+        logger.lifecycle(" ---- Executing single Gatling Simulations: ${gatlingScenarioClass} ----")
+
+        runGatlingSimulation(gatlingScenarioClass, runReports)
+
+    } else {
+
+        def iSims = "";
+        def splitiSims = []
+        if (project.hasProperty("ignoreSims")) {
+            iSims = ignoreSims
+            splitiSims = iSims.split(',')
+        }
+
+        logger.lifecycle(" ---- Executing all Gatling Simulations from: ${sourceSets.test.output.classesDir} ----")
+
+        sourceSets.test.output.classesDir.eachFileRecurse { file ->
+            if (file.isFile()) {
+
+                def gatlingScenarioClass = (file.getPath() - (sourceSets.test.output.classesDir.getPath() + File.separator) - '.class')
+                        .replace(File.separator, '.')
+
+                def foundGatlingSim = gatlingScenarioClass.lastIndexOf("Simulation");
+
+                if (foundGatlingSim > 0 && !splitiSims.contains(gatlingScenarioClass)) {
+                    runGatlingSimulation(gatlingScenarioClass, runReports)
+                }
+            }
+        }
+    }
+
+    logger.lifecycle(" ---- Done executing all Gatling scenarios ----")
 }
 
+/**
+ * List all gatling simulations
+ */
+task listSims(dependsOn: 'compileTestScala') << {
 
-task wrapper (type: Wrapper) {
-    gradleVersion = '2.0'
+    logger.lifecycle("\nListing all Gatling Simulations from: ${sourceSets.test.output.classesDir}:")
+
+    logger.lifecycle("")
+    sourceSets.test.output.classesDir.eachFileRecurse { file ->
+        if (file.isFile()) {
+
+            def gatlingScenarioClass = (file.getPath() - (sourceSets.test.output.classesDir.getPath() + File.separator) - '.class')
+                    .replace(File.separator, '.')
+
+            def foundGatlingSim = gatlingScenarioClass.lastIndexOf("Simulation");
+
+            if (foundGatlingSim > 0) {
+                logger.lifecycle("\t${gatlingScenarioClass}")
+            }
+        }
+    }
+}
+
+/**
+ * Merge Multiple Simulation Logs into a single log
+ */
+task mergeReports(dependsOn: 'compileTestScala') << {
+
+    def simulationLogDir = project.buildDir.absolutePath + '/reports/mergedSimulationLogs'
+
+    if (project.hasProperty("simLogsDir")) {
+        simulationLogDir = simLogsDir
+    }
+
+    def simulationLogFolder = new File(simulationLogDir)
+    simulationLogFolder.mkdirs()
+
+    def reportDir = new File(project.buildDir.absolutePath + '/reports/')
+
+    logger.lifecycle("----- Moving all simulation.log files to build/simLogs directory -----")
+    reportDir.eachFileRecurse { file ->
+
+        if (file.toString() != simulationLogDir) {
+            if (file.isFile()) {
+
+                if (file.getName() == "simulation.log") {
+
+                    def dirSplit = file.toString().split('/')
+                    def newFileName = simulationLogDir + '/' + dirSplit[dirSplit.length - 2] + '.log'
+
+                    file.renameTo(newFileName)
+                }
+            }
+        }
+    }
+
+    logger.lifecycle("----- Merging all Simulations into one Report -----")
+
+    javaexec {
+        main = 'io.gatling.app.Gatling'
+        classpath = sourceSets.test.output + sourceSets.test.runtimeClasspath
+        args '-ro', simulationLogDir
+    }
+}
+
+/**
+ * Run the gatling tests w/ params
+ *
+ * @param gatlingScenarioClass
+ * @param runReports
+ * @return
+ */
+def runGatlingSimulation(gatlingScenarioClass, runReports = true) {
+
+    def absPath = System.getProperty("user.dir");
+
+    javaexec {
+        if (project.hasProperty('jvmArgs')) {
+            jvmArgs project.jvmArgs.split('\\s+')
+        }
+
+        main = 'io.gatling.app.Gatling'
+        classpath = sourceSets.test.output + sourceSets.test.runtimeClasspath
+        args '-sf', sourceSets.test.output.classesDir,
+                '-s', gatlingScenarioClass,
+                '-rf', project.buildDir.absolutePath + '/reports/',
+                '-df', absPath + '/data/'
+
+        if (runReports == false) {
+            args '-nr'
+        }
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.2'
 }
 
